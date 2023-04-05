@@ -4,8 +4,7 @@
 // Submission by
 // Ridwan Salim
 // Ridwan.Salim@city.ac.uk
-import java.io.File;
-import java.lang.reflect.Array;
+
 import java.util.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -42,9 +41,6 @@ public class Solver {
     // Worst case complexity : O(cl)
     // Best case complexity : O(l)
     public boolean checkClauseDatabase(int[] assignment, int[][] clauseDatabase) {
-        int aMaxIndex = assignment.length-1;
-        int[] check = new int[clauseDatabase.length];
-        int abscldbi;
         for (int i = 0; i < clauseDatabase.length; i++){
             if (checkClause(assignment, clauseDatabase[i]) == false){
                 return false;
@@ -93,7 +89,7 @@ public class Solver {
                 }
                 else if ((clause[i] > 0 && partialAssignment[abscli] == 1) || (clause[i] < 0 &&
                         partialAssignment[abscli] == -1) || (partialAssignment[abscli] == 0 && existsZero == true)){
-                    return  0;
+                    return 0;
                 }
             }
         }
@@ -103,87 +99,36 @@ public class Solver {
     // Part B
     // I think this can solve ????
 
-    public int[] solve(int[][] cldb, int[] pa){
-        // check if unit clause, if so set it to true in partial assignment and recursion
+    public int[] solve(int[][] clauseDatabase, int[] assignment){
 
-        // check if a clause is empty, if so return null (unsatisfiable)
+        // immediately returns true if satisfied
 
-        // check if the assignment satisfies the clause database, if doesnt then continue recursion
-        // by taking the most frequent literal, then set the partial assignment to true for this
-        // literal and recursion. If it does then return assignment
-
-        int[] partialAssignment = pa;
-
-        int numZeros = 0;
-
-        for (int i = 0; i < clauseDatabase.length; i++){
-            int checkUnitClause = findUnit(partialAssignment, clauseDatabase[i]);
-            for (int j = 0; j < clauseDatabase[i].length; j++){
-                // check if empty clause
-                if (clauseDatabase[i][j] == 0){
-                    numZeros++;
-                    if (numZeros == clauseDatabase[i].length){
-                        return null;
-                    }
-                }
-                // check if unit clause
-                if (checkUnitClause != 0) {
-                    // if positive
-                    if (checkUnitClause > 0) {
-                        partialAssignment[Math.abs(checkUnitClause)] = 1;
-                    }
-                    // if negative
-                    else if (checkUnitClause < 0) {
-                        partialAssignment[Math.abs(checkUnitClause)] = -1;
-                    }
-                    return solve(clauseDatabase, partialAssignment);
-                }
-            }
-            numZeros = 0;
+        if (checkClauseDatabase(assignment, clauseDatabase) == true){
+            return assignment;
         }
 
-        ////// FIX THIS PART OF THE CODE
+        // check if unit clause
 
-//        if (checkClauseDatabase(partialAssignment, clauseDatabase) == true){
-//            return partialAssignment;
-//        }
-//        else{
-//            HashMap<Integer,Integer> map = new HashMap<Integer, Integer>();
-//            int maxCount = 0;
-//            int value = 0;
-//            for (int i = 0; i < clauseDatabase.length; i++){
-//                for (int j = 0; j < clauseDatabase[i].length; j++){
-//                    int count = map.getOrDefault(clauseDatabase[i][j], 0) + 1;
-//                    map.put(clauseDatabase[i][j], count);
-//                    if (count > maxCount) {
-//                        maxCount = count;
-//                        value = clauseDatabase[i][j];
-//                    }
-//                }
-//            }
-//            int set = 0;
-//            if (value > 0){
-//                partialAssignment[Math.abs(value)] = 1;
-//                set = -1;
-//            }
-//            else if (value < 0){
-//                partialAssignment[Math.abs(value)] = -1;
-//                set = 1;
-//            }
-//            int[] t1 = solve(clauseDatabase,partialAssignment);
-//            if (t1 != null){
-//                return t1;
-//            }
-//            else{
-//                partialAssignment[Math.abs(value)] = set;
-//                int[] t2 = solve(clauseDatabase,partialAssignment);
-//                return t2;
-//            }
-//        }
-    return null;
+        for (int i = 0; i < clauseDatabase.length; i++){
+            int checkUnitClause = findUnit(assignment, clauseDatabase[i]);
+            if (checkUnitClause != 0){
+                int[] newA = Arrays.copyOf(assignment,assignment.length);
+                if (checkUnitClause > 0){
+                    newA[Math.abs(checkUnitClause)] = 1;
+                }
+                else {
+                    newA[Math.abs(checkUnitClause)] = -1;
+                }
+                return solve(clauseDatabase,newA);
+            }
+        }
+        return null;
     }
 
-    public int getMaxIndex(){
+    public int[] checkSat(int[][] clauseDatabase) {
+
+        // create assignment
+
         int maxIndex = 0;
         for (int i = 0; i < clauseDatabase.length; i++){
             for (int j = 0; j < clauseDatabase[i].length; j++){
@@ -192,33 +137,101 @@ public class Solver {
                 }
             }
         }
-        return maxIndex;
-    }
+        int[] a = new int[maxIndex+1];
+        a[0] = 0;
 
-    public int[] checkSat(int[][] clauseDatabase) {
+        // checking for an empty clause
 
-        int[] pa = new int[getMaxIndex()+1];
-        pa[0] = 0;
-        HashSet<Integer> literals = new HashSet<>();
+        int numZeros = 0;
         for (int i = 0; i < clauseDatabase.length; i++){
             for (int j = 0; j < clauseDatabase[i].length; j++){
-                literals.add(clauseDatabase[i][j]);
+                if (clauseDatabase[i][j] == 0){
+                    numZeros++;
+                    if (numZeros == clauseDatabase[i].length){
+                        return null;
+                    }
+                }
+            }
+            numZeros = 0;
+        }
+
+        // directly assign literals, check pure
+
+        // this takes a majority between the literal and its negation
+        // then assigns the higher value
+        // it would reach end case much faster if the majority literal
+        // was true over its negation
+
+        HashSet<Integer> checked = new HashSet<Integer>();
+        HashMap<Integer,Integer> map = new HashMap<Integer,Integer>();
+
+        for (int i = 0; i < clauseDatabase.length; i++){
+            for (int j = 0; j < clauseDatabase[i].length; j++){
+                int count = map.getOrDefault(clauseDatabase[i][j],0)+1;
+                map.put(clauseDatabase[i][j],count);
             }
         }
+
         for (int i = 0; i < clauseDatabase.length; i++){
             for (int j = 0; j < clauseDatabase[i].length; j++){
-                if (literals.contains(clauseDatabase[i][j] * -1) == false){
-                    if (clauseDatabase[i][j] > 0){
-                        pa[Math.abs(clauseDatabase[i][j])] = 1;
+                // if the abs(current literal) is not in checked then
+                // add to checked, so it doesnt get evaluated again
+                // if map contains literal's negation then
+                // check which one is more frequent
+                // assign to the assignment
+
+                if (checked.contains(Math.abs(clauseDatabase[i][j])) == false){
+                    checked.add(Math.abs(clauseDatabase[i][j]));
+                    if (map.containsValue(clauseDatabase[i][j] * -1)){
+                        int pos = 0;
+                        int neg = 0;
+                        // positive
+                        if (clauseDatabase[i][j] > 0){
+                            pos = map.getOrDefault(clauseDatabase[i][j],0);
+                            neg = map.getOrDefault(-clauseDatabase[i][j],0);
+                        }
+                        // negative
+                        else if (clauseDatabase[i][j] < 0){
+                            pos = map.getOrDefault(-clauseDatabase[i][j],0);
+                            neg = map.getOrDefault(clauseDatabase[i][j],0);
+                        }
+
+                        if (pos > neg){
+                            a[Math.abs(clauseDatabase[i][j])] = 1;
+                        }
+                        else if (neg > pos){
+                            a[Math.abs(clauseDatabase[i][j])] = -1;
+                        }
+                        // they are both the same frequency
+                        else{
+                            a[Math.abs(clauseDatabase[i][j])] = 1;
+                        }
                     }
-                    else if (clauseDatabase[i][j] < 0){
-                        pa[Math.abs(clauseDatabase[i][j])] = -1;
+
+                    // it is a pure literal
+                    else{
+                        if (clauseDatabase[i][j] > 0){
+                            a[Math.abs(clauseDatabase[i][j])] = 1;
+                        }
+                        else if (clauseDatabase[i][j] < 0){
+                            a[Math.abs(clauseDatabase[i][j])] = -1;
+                        }
                     }
                 }
             }
         }
-        return solve(clauseDatabase, pa); // returns the partial assignment
 
+        // check if the assignment contains any unknowns
+        // assign them to 1 to prevent an unknown assignment error
+
+        for (int i = 1; i < a.length; i++){
+            if (a[i] == 0){
+                a[i] = 1;
+            }
+        }
+
+        // start recursion
+        return solve(clauseDatabase, a);
     }
 
     /*****************************************************************\
