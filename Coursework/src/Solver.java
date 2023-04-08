@@ -265,7 +265,7 @@ public class Solver {
 //        }
 
         /**\
-         This doesnt work ^^ because it takes too much effort to undo the assignments and check each time if its not a majority satisfying assignment and undo
+         This doesnt work ^^ because it takes too much effort to undo the assignments and check each time if its not a majority satisfying assignment
          */
 
         // start recursion
