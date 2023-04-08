@@ -101,9 +101,14 @@ public class Solver {
 
     public int[] solve(int[][] clauseDatabase, int[] assignment){
 
-        // immediately returns true if satisfied
+        // no unknowns when returning assignment
 
-        if (checkClauseDatabase(assignment, clauseDatabase) == true){
+        if (checkClauseDatabase(assignment,clauseDatabase) == true){
+            for (int i = 1; i < assignment.length; i++){
+                if (assignment[i] == 0){
+                    assignment[i] = 1;
+                }
+            }
             return assignment;
         }
 
@@ -113,16 +118,54 @@ public class Solver {
             int checkUnitClause = findUnit(assignment, clauseDatabase[i]);
             if (checkUnitClause != 0){
                 int[] newA = Arrays.copyOf(assignment,assignment.length);
-                if (checkUnitClause > 0){
-                    newA[Math.abs(checkUnitClause)] = 1;
-                }
-                else {
-                    newA[Math.abs(checkUnitClause)] = -1;
-                }
+                newA[Math.abs(checkUnitClause)] = checkUnitClause / Math.abs(checkUnitClause);
                 return solve(clauseDatabase,newA);
             }
         }
+
+        // filling in the rest of the 1 and -1 recursion
+
+        for (int i = 1; i < assignment.length; i++){
+            if (assignment[i] == 0){
+                int[] newAa = Arrays.copyOf(assignment, assignment.length);
+                newAa[i] = 1;
+                int[] A = solve(clauseDatabase,newAa);
+                if (A != null){
+                    return A;
+                }
+                int[] newAb = Arrays.copyOf(assignment, assignment.length);
+                newAb[i] = -1;
+                int[] B = solve(clauseDatabase,newAb);
+                if (B != null){
+                    return B;
+                }
+                return null;
+            }
+        }
+
         return null;
+
+//        while (counts.size() != 0){
+//            int literal = 0;
+//            int lowestFreq = 100;
+//            for (HashMap.Entry<Integer, Integer> i : counts.entrySet()){
+//                Integer currentLit = i.getKey();
+//                int freq = counts.getOrDefault(currentLit,0);
+//                if (freq < lowestFreq){
+//                    lowestFreq = freq;
+//                    literal = currentLit;
+//                }
+//            }
+//
+//            int[] copyAssignment = Arrays.copyOf(assignment,assignment.length);
+//            copyAssignment[Math.abs(literal)] = -assignment[Math.abs(literal)];
+//            counts.remove(literal);
+//            int[] check = solve(clauseDatabase,copyAssignment,counts);
+//            if (check != null){
+//                return check;
+//            }
+//            return null;
+//        }
     }
 
     public int[] checkSat(int[][] clauseDatabase) {
@@ -155,80 +198,75 @@ public class Solver {
             numZeros = 0;
         }
 
-        // directly assign literals, check pure
+        // check pure literals and assign
 
-        // this takes a majority between the literal and its negation
-        // then assigns the higher value
-        // it would reach end case much faster if the majority literal
-        // was true over its negation
-
-        HashSet<Integer> checked = new HashSet<Integer>();
-        HashMap<Integer,Integer> map = new HashMap<Integer,Integer>();
+        HashSet<Integer> literals = new HashSet<Integer>();
 
         for (int i = 0; i < clauseDatabase.length; i++){
             for (int j = 0; j < clauseDatabase[i].length; j++){
-                int count = map.getOrDefault(clauseDatabase[i][j],0)+1;
-                map.put(clauseDatabase[i][j],count);
+                literals.add(clauseDatabase[i][j]);
             }
         }
 
-        for (int i = 0; i < clauseDatabase.length; i++){
-            for (int j = 0; j < clauseDatabase[i].length; j++){
-                // if the abs(current literal) is not in checked then
-                // add to checked, so it doesnt get evaluated again
-                // if map contains literal's negation then
-                // check which one is more frequent
-                // assign to the assignment
-
-                if (checked.contains(Math.abs(clauseDatabase[i][j])) == false){
-                    checked.add(Math.abs(clauseDatabase[i][j]));
-                    if (map.containsValue(clauseDatabase[i][j] * -1)){
-                        int pos = 0;
-                        int neg = 0;
-                        // positive
-                        if (clauseDatabase[i][j] > 0){
-                            pos = map.getOrDefault(clauseDatabase[i][j],0);
-                            neg = map.getOrDefault(-clauseDatabase[i][j],0);
-                        }
-                        // negative
-                        else if (clauseDatabase[i][j] < 0){
-                            pos = map.getOrDefault(-clauseDatabase[i][j],0);
-                            neg = map.getOrDefault(clauseDatabase[i][j],0);
-                        }
-
-                        if (pos > neg){
-                            a[Math.abs(clauseDatabase[i][j])] = 1;
-                        }
-                        else if (neg > pos){
-                            a[Math.abs(clauseDatabase[i][j])] = -1;
-                        }
-                        // they are both the same frequency
-                        else{
-                            a[Math.abs(clauseDatabase[i][j])] = 1;
-                        }
-                    }
-
-                    // it is a pure literal
-                    else{
-                        if (clauseDatabase[i][j] > 0){
-                            a[Math.abs(clauseDatabase[i][j])] = 1;
-                        }
-                        else if (clauseDatabase[i][j] < 0){
-                            a[Math.abs(clauseDatabase[i][j])] = -1;
-                        }
-                    }
-                }
+        for (Integer lit : literals){
+            if (literals.contains(-lit) == false){
+                a[Math.abs(lit)] = lit / Math.abs(lit);
             }
         }
 
-        // check if the assignment contains any unknowns
-        // assign them to 1 to prevent an unknown assignment error
 
-        for (int i = 1; i < a.length; i++){
-            if (a[i] == 0){
-                a[i] = 1;
-            }
-        }
+//        // directly assign literals, check pure
+//        // this takes a majority between the literal and its negation
+//        // then assigns the higher value
+//
+//        HashSet<Integer> checked = new HashSet<Integer>();
+//        HashMap<Integer,Integer> map = new HashMap<Integer,Integer>();
+//        HashMap<Integer,Integer> counts = new HashMap<Integer,Integer>();
+//
+//        for (int i = 0; i < clauseDatabase.length; i++){
+//            for (int j = 0; j < clauseDatabase[i].length; j++){
+//                int count = map.getOrDefault(clauseDatabase[i][j],0)+1;
+//                map.put(clauseDatabase[i][j],count);
+//            }
+//        }
+//
+//        for (HashMap.Entry<Integer, Integer> i : map.entrySet()){
+//            Integer lit = i.getKey();
+////            // check if it has already been checked
+//            if (checked.contains(Math.abs(lit)) == false){
+////                // add the absolute values to the checked HashSet
+//                checked.add(Math.abs(lit));
+//                int freq = map.getOrDefault(lit,0);
+////                // check if the literal's negation exists
+//                if (map.containsKey(-lit) == true){
+//                    freq += map.getOrDefault(-lit,0);
+//                    int pos = 0;
+//                    int neg = 0;
+//                    pos = map.getOrDefault(Math.abs(lit),0);
+//                    neg = map.getOrDefault(-Math.abs(lit), 0);
+//
+//                    if (pos > neg){
+//                        a[Math.abs(lit)] = 1;
+//                    }
+//                    else if (neg > pos){
+//                        a[Math.abs(lit)] = -1;
+//                    }
+//                    // they are both the same frequency
+//                    else{
+//                        a[Math.abs(lit)] = 1;
+//                    }
+//                }
+//               // it is a pure literal
+//                else{
+//                    a[Math.abs(lit)] = lit / Math.abs(lit);
+//                }
+//                counts.put(Math.abs(lit),freq);
+//            }
+//        }
+
+        /**\
+         This doesnt work ^^ because it takes too much effort to undo the assignments and check each time if its not a majority satisfying assignment and undo
+         */
 
         // start recursion
         return solve(clauseDatabase, a);
